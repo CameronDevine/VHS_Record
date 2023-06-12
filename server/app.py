@@ -2,7 +2,6 @@ from flask import Flask
 import os
 import json
 from flask_socketio import SocketIO
-from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -23,12 +22,8 @@ class VHS_Record:
     def __init__(self):
         self.recording = False
         self.filename = ""
-        self.img = None
-        self.levels = []
         self.clients = 0
-        self.scheduler = BackgroundScheduler(daemon=True)
-        self.scheduler.add_job(self.send_state, "interval", seconds=1)
-        self.scheduler.start(paused=True)
+        self.connected = False
         if os.path.isfile(self.settings_loc):
             with open(self.settings_loc) as f:
                 self.settings = json.load(f)
@@ -47,12 +42,12 @@ class VHS_Record:
     def connect(self, *args, **kwargs):
         self.clients += 1
         if self.clients > 0:
-            self.scheduler.resume()
+            self.connected = True
 
     def disconnect(self, *args, **kwargs):
         self.clients -= 1
         if self.clients < 1:
-            self.scheduler.pause()
+            self.connected = False
 
     def start(self):
         print("starting")
@@ -67,7 +62,7 @@ class VHS_Record:
     def set_enable(self, label=None, enable=None):
         assert label is not None
         assert enable is not None
-        self.update_settings(label + "_enable", bool(enable))
+        self.update_settings(label + "_enable", enable.lower() == "true")
         return {}
 
     def set_level(self, label=None, level=None):
@@ -82,8 +77,8 @@ class VHS_Record:
         print(self.filename)
         return {}
 
-    def send_state(self):
-        socket.emit("state", dict(settings=self.settings, filename=self.filename, img=self.img, recording=self.recording, levels=self.levels))
+    def state(self):
+        return dict(settings=self.settings, filename=self.filename)
 
 
 recorder = VHS_Record()
@@ -93,6 +88,7 @@ app.add_url_rule("/stop", "stop", recorder.stop, methods=["POST"])
 app.add_url_rule("/<label>_enable/<enable>", "enable", recorder.set_enable, methods=["POST"])
 app.add_url_rule("/<label>_level/<int:level>", "level", recorder.set_level, methods=["POST"])
 app.add_url_rule("/filename/<filename>", "filename", recorder.set_filename, methods=["POST"])
+app.add_url_rule("/state", "state", recorder.state, methods=["GET"])
 
 socket.on_event("connect", recorder.connect)
 socket.on_event("disconnect", recorder.disconnect)

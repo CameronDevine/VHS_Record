@@ -17,8 +17,6 @@ RUN python3.8 get-pip.py && rm get-pip.py
 RUN pip install \
       flask \
       flask-socketio \
-#      eventlet \
-      apscheduler \
       tflite-runtime \
       rtp
 COPY server /server
