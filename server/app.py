@@ -19,9 +19,10 @@ socket = SocketIO(app)
 
 class VHS_Record:
     settings_loc = "/config/settings.json"
-    ffmpeg_settings = dict(
-        vcodec="h264",
-        extension="mp4",
+    env_settings = dict(
+        VCODEC="h264",
+        EXTENSION="mp4",
+        SAVE_RTP=True,
     )
     default_settings = dict(
         filter_level=0,
@@ -39,9 +40,8 @@ class VHS_Record:
         self.process = None
         self.filename = ""
         self.clients = 0
-        self.connected = False
         self.rtsp_client = None
-        self.thread = threading.Thread(target=self.rtp_handler, daemon=True)
+        self.thread = None
         self.detector = Detector()
 
         if os.path.isfile(self.settings_loc):
@@ -82,19 +82,20 @@ class VHS_Record:
 
     def connect(self, *args, **kwargs):
         self.clients += 1
-        if self.clients > 0:
-            self.connected = True
 
     def disconnect(self, *args, **kwargs):
         self.clients -= 1
-        if self.clients < 1:
-            self.connected = False
 
     def start(self):
+        if self.recording:
+            return dict(error="Already recording"), 409
         if len(self.filename) == 0:
-            return dict(error="Invalid Filename"), 409
-        if not self.filename.endswith(self.ffmpeg_settings["extension"]):
-            self.filename += "." + self.ffmpeg_settings["extension"]
+            return dict(error="Invalid filename"), 409
+        if not self.filename.endswith(self.env_settings["EXTENSION"]):
+            self.filename += "." + self.env_settings["EXTENSION"]
+        path = os.path.join("/data", self.filename)
+        if os.path.exists(path):
+            return dict(error="File already exists"), 409
         for filter in self.filters:
             filter.reset()
         self.process = subprocess.Popen(
@@ -110,8 +111,8 @@ class VHS_Record:
                 "-map",
                 "[in1]",
                 "-vcodec",
-                self.ffmpeg_settings["vcodec"],
-                self.filename,
+                self.env_settings["VCODEC"],
+                path,
                 "-map",
                 "[out2]",
                 "-vcodec",
@@ -126,11 +127,13 @@ class VHS_Record:
         )
         self.recording = True
         self.rtsp_client = rtsp.Client(rtsp_server_uri="rtp://127.0.0.1:8888")
+        self.thread = threading.Thread(target=self.rtp_handler, daemon=True)
         self.thread.start()
         return {}
 
     def stop(self):
-        print("stopping")
+        if not self.recording:
+            return dict(error="Not currently recording"), 409
         self.recording = False
         self.thread.join(timeout=2)
         self.process.terminate()
@@ -167,6 +170,7 @@ class VHS_Record:
 
     def rtp_handler(self):
         last_image = None
+        index = 0
         while self.recording:
             image = self.rtsp_client.read()
             if image is not None:
@@ -186,17 +190,32 @@ class VHS_Record:
                             > self.settings[self.labels[i] + "_level"]
                         ):
                             self.recording = False
-                    img_buffer = BytesIO()
-                    image.save(img_buffer, format="png")
-                    img_str = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
-                    socket.emit(
-                        "state",
-                        dict(
-                            img=img_str,
-                            recording=self.recording,
-                            levels=self.levels,
-                        ),
-                    )
+                            self.process.terminate()
+                            self.rtsp_client.close()
+                    if self.clients >= 1:
+                        img_buffer = BytesIO()
+                        image.save(img_buffer, format="png")
+                        img_str = base64.b64encode(img_buffer.getvalue()).decode(
+                            "utf-8"
+                        )
+                        socket.emit(
+                            "state",
+                            dict(
+                                img=img_str,
+                                recording=self.recording,
+                                levels=self.levels,
+                            ),
+                        )
+                    if self.env_settings["SAVE_RTP"]:
+                        filename = os.path.join(
+                            "/data",
+                            self.filename.split(".")[0],
+                            "frame{:05d}.png".format(index),
+                        )
+                        if index == 0:
+                            os.makedirs(os.path.split(filename)[0])
+                        image.save(filename)
+                        index += 1
                     last_image = image
 
 

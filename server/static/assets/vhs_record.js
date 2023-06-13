@@ -1,6 +1,5 @@
 socket = io();
 socket.on("state", (data) => {
-  console.log(data);
   document.getElementById("monitor").src = "data:image/png;charset=utf-8;base64," + data.img;
   set_recording(data.recording);
   set_level(document.getElementById("black_level"), data.levels[0]);
@@ -44,19 +43,28 @@ function post(url) {
   request.send();
   request.onload = () => {
     if (request.status != 200) {
-      console.log(request.response);
+      try {
+        data = JSON.parse(request.response);
+      } catch (error) {
+        data = {error: "Error"};
+      }
+      if ("error" in data) {
+        document.getElementById("notification").MaterialSnackbar.showSnackbar({
+          message: data.error,
+        });
+      }
+      return false;
     }
   }
+  return true;
 }
 
 function start() {
-  post("/start");
-  set_recording(true);
+  set_recording(post("/start"));
 }
 
 function stop() {
-  post("/stop")
-  set_recording(false);
+  set_recording(!post("/stop"));
 }
 
 function set_recording(recording) {
