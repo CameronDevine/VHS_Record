@@ -2,9 +2,15 @@ socket = io();
 socket.on("state", (data) => {
   document.getElementById("monitor").src = "data:image/png;charset=utf-8;base64," + data.img;
   set_recording(data.recording);
-  set_level(document.getElementById("black_level"), data.levels[0]);
-  set_level(document.getElementById("blue_level"), data.levels[1]);
-  set_level(document.getElementById("noise_level"), data.levels[2]);
+  if (document.getElementById("black_enable").checked) {
+    set_level(document.getElementById("black_level"), data.levels[0]);
+  }
+  if (document.getElementById("blue_enable").checked) {
+    set_level(document.getElementById("blue_level"), data.levels[1]);
+  }
+  if (document.getElementById("noise_enable").checked) {
+    set_level(document.getElementById("noise_level"), data.levels[2]);
+  }
 });
 
 window.addEventListener("load", (event) => {
