@@ -9,8 +9,6 @@ RUN apt-get update && \
       alsa-base \
       alsa-utils \
       libsndfile1-dev \
-      #gstreamer1.0-tools \
-      #gstreamer1.0-plugins-good \
     	libgl1-mesa-glx \
     && apt-get clean
 ADD https://bootstrap.pypa.io/get-pip.py .
@@ -23,10 +21,6 @@ RUN pip install \
       camerons-python
 COPY server /server
 
-#ENTRYPOINT gst-launch-1.0 v4l2src device=/dev/video ! tee name=t ! queue ! v4l2sink device=/dev/video1 t. ! queue ! v4l2sink device=/dev/video2; bash
-#ENTRYPOINT gst-launch-1.0 -q v4l2src device=/dev/video ! tee name=t ! queue ! autovideosink t. ! queue ! autovideosink & bash
-#ENTRYPOINT bash
 ENTRYPOINT []
 
-#CMD flask --app server/app run -h 0.0.0.0
 CMD python3.8 server/app.py

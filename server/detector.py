@@ -1,8 +1,4 @@
 import os
-
-# from tensorflow import lite as tflite
-# import tf.lite as tflite
-# import tflite_runtime as tflite
 from tflite_runtime.interpreter import Interpreter
 import numpy as np
 
