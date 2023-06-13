@@ -207,10 +207,11 @@ class VHS_Record:
                             ),
                         )
                     if self.env_settings["SAVE_RTP"]:
+                        filename_base = self.filename.split(".")[0]
                         filename = os.path.join(
                             "/data",
-                            self.filename.split(".")[0],
-                            "frame{:05d}.png".format(index),
+                            filename_base,
+                            "{}-{:05d}.png".format(filename_base, index),
                         )
                         if index == 0:
                             os.makedirs(os.path.split(filename)[0])
