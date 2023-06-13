@@ -9,8 +9,9 @@ RUN apt-get update && \
       alsa-base \
       alsa-utils \
       libsndfile1-dev \
-      gstreamer1.0-tools \
-      gstreamer1.0-plugins-good \
+      #gstreamer1.0-tools \
+      #gstreamer1.0-plugins-good \
+    	libgl1-mesa-glx \
     && apt-get clean
 ADD https://bootstrap.pypa.io/get-pip.py .
 RUN python3.8 get-pip.py && rm get-pip.py
@@ -18,7 +19,7 @@ RUN pip install \
       flask \
       flask-socketio \
       tflite-runtime \
-      rtp
+      rtsp
 COPY server /server
 
 #ENTRYPOINT gst-launch-1.0 v4l2src device=/dev/video ! tee name=t ! queue ! v4l2sink device=/dev/video1 t. ! queue ! v4l2sink device=/dev/video2; bash

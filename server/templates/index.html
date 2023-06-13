@@ -2,6 +2,7 @@
   <head>
     <meta charset="utf-8">
     <title>VHS Record</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.light_blue-deep_purple.min.css">
@@ -29,7 +30,7 @@
           <h3>Settings</h3>
           <h5>Filename</h5>
           <div class="mdl-textfield mdl-js-textfield">
-            <input class="mdl-textfield__input" type="text" id="filename">
+            <input class="mdl-textfield__input" type="text" id="filename" value="{{ filename }}">
             <label class="mdl-textfield__label" for="filename">Finding Nemo (2003).mp4</label>
           </div>
           <h5>Controls</h5>
@@ -41,22 +42,14 @@
           </button>
           <h5>Automatic Stop</h5>
           <h6>Filter</h6>
-          <input class="mdl-slider mdl-js-slider" type="range" min="0" max="150" value="0" tabindex="0" id="filter_level">
-          <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="black_enable">
-            <input type="checkbox" id="black_enable" class="mdl-switch__input">
-            <span class="mdl-switch__label">Black Screen</span>
-          </label>
-          <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="0" tabindex="0" id="black_level" disabled>
-          <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="blue_enable">
-            <input type="checkbox" id="blue_enable" class="mdl-switch__input">
-            <span class="mdl-switch__label">Blue Screen</span>
-          </label>
-          <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="0" tabindex="0" id="blue_level" disabled>
-          <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="noise_enable">
-            <input type="checkbox" id="noise_enable" class="mdl-switch__input">
-            <span class="mdl-switch__label">Noise</span>
-          </label>
-          <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="0" tabindex="0" id="noise_level" disabled>
+          <input class="mdl-slider mdl-js-slider" type="range" min="0" max="150" value="{{ 10 * settings.filter_level}}" tabindex="0" id="filter_level">
+          {% for label in ["black", "blue", "noise"] %}
+            <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="{{ label }}_enable">
+              <input type="checkbox" id="{{ label }}_enable" class="mdl-switch__input" {% if settings[label + "_enable"] %}checked{% endif %}>
+              <span class="mdl-switch__label">{{ label | capitalize }} {% if label != "noise" %}Screen{% endif %}</span>
+            </label>
+            <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="{{ 100 * settings[label + '_level'] }}" tabindex="0" id="{{ label }}_level" {% if not settings[label + "_enable"] %}disabled{% endif %}>
+          {% endfor %}
         </div>
       </div>
     </main>

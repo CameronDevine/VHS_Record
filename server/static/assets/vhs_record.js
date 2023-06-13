@@ -32,47 +32,47 @@ window.addEventListener("load", (event) => {
     format_slider(event);
   }
 
-  set_state();
+  // set_state();
 });
 
-function set_state() {
-  let request = new XMLHttpRequest();
-  request.open("GET", "/state");
-  request.send();
-  request.onload = () => {
-    if (request.status != 200) {
-      console.log(request.response);
-    } else {
-      data = JSON.parse(request.response);
-      console.log(data);
-      (new Map(Object.entries(data.settings))).forEach((value, key) => {
-        if (key.endsWith("_enable")) {
-          element = document.getElementById(key);
-          element.checked = value;
-          if (value) {
-            element.parentElement.classList.add("is-checked");
-          } else {
-            element.parentElement.classList.remove("is-checked");
-          }
-          disable_slider(key);
-        } else if (key == "filter_level") {
-          element = document.getElementById(key);
-          if (element.classList.contains("is-upgraded")) {
-            element.MaterialSlider.change(10 * value);
-          } else {
-            console.log("setting listener")
-            element.addEventListener("mdl-componentupgraded", (event) => {
-              event.srcElement.MaterialSlider.change(10 * value);
-            });
-          }
-        } else if (key.endsWith("_level")) {
-          document.getElementById(key).value = 100 * value;
-        }
-      });
-      document.getElementById("filename").value = data.filename;
-    }
-  }
-}
+// function set_state() {
+//   let request = new XMLHttpRequest();
+//   request.open("GET", "/state");
+//   request.send();
+//   request.onload = () => {
+//     if (request.status != 200) {
+//       console.log(request.response);
+//     } else {
+//       data = JSON.parse(request.response);
+//       console.log(data);
+//       (new Map(Object.entries(data.settings))).forEach((value, key) => {
+//         if (key.endsWith("_enable")) {
+//           element = document.getElementById(key);
+//           element.checked = value;
+//           if (value) {
+//             element.parentElement.classList.add("is-checked");
+//           } else {
+//             element.parentElement.classList.remove("is-checked");
+//           }
+//           disable_slider(key);
+//         } else if (key == "filter_level") {
+//           element = document.getElementById(key);
+//           if (element.classList.contains("is-upgraded")) {
+//             element.MaterialSlider.change(10 * value);
+//           } else {
+//             console.log("setting listener")
+//             element.addEventListener("mdl-componentupgraded", (event) => {
+//               event.srcElement.MaterialSlider.change(10 * value);
+//             });
+//           }
+//         } else if (key.endsWith("_level")) {
+//           document.getElementById(key).value = 100 * value;
+//         }
+//       });
+//       document.getElementById("filename").value = data.filename;
+//     }
+//   }
+// }
 
 function post(url) {
   let request = new XMLHttpRequest();
@@ -124,8 +124,10 @@ function filename() {
 function format_slider(element) {
   element.MaterialSlider.updateValueStyles_ = () => null;
   element.classList.remove("is-lowest-value");
+  set_level(element, 0);
 }
 
-function set_switch(id, state) {
-
+function set_level(element, value) {
+  element.parentElement.getElementsByClassName("mdl-slider__background-lower")[0].style.flexGrow = value;
+  element.parentElement.getElementsByClassName("mdl-slider__background-upper")[0].style.flexGrow = 1 - value;
 }
