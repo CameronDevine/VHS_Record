@@ -1,7 +1,12 @@
-// socket = io();
-// socket.on("state", (data) => {
-//   console.log(data);
-// });
+socket = io();
+socket.on("state", (data) => {
+  console.log(data);
+  document.getElementById("monitor").src = "data:image/png;charset=utf-8;base64," + data.img;
+  set_recording(data.recording);
+  set_level(document.getElementById("black_level"), data.levels[0]);
+  set_level(document.getElementById("blue_level"), data.levels[1]);
+  set_level(document.getElementById("noise_level"), data.levels[2]);
+});
 
 window.addEventListener("load", (event) => {
   document.getElementById("filename").addEventListener("focusout", filename);
@@ -87,16 +92,24 @@ function post(url) {
 
 function start() {
   post("/start");
-  document.getElementById("record_button").setAttribute("disabled", "");
-  document.getElementById("stop_button").removeAttribute("disabled");
-  document.getElementById("filename").setAttribute("disabled", "");
+  set_recording(true);
 }
 
 function stop() {
   post("/stop")
-  document.getElementById("stop_button").setAttribute("disabled", "");
-  document.getElementById("record_button").removeAttribute("disabled");
-  document.getElementById("filename").removeAttribute("disabled");
+  set_recording(false);
+}
+
+function set_recording(recording) {
+  if (recording) {
+    document.getElementById("record_button").setAttribute("disabled", "");
+    document.getElementById("stop_button").removeAttribute("disabled");
+    document.getElementById("filename").setAttribute("disabled", "");
+  } else {
+    document.getElementById("stop_button").setAttribute("disabled", "");
+    document.getElementById("record_button").removeAttribute("disabled");
+    document.getElementById("filename").removeAttribute("disabled");
+  }
 }
 
 function enable_switch(event) {

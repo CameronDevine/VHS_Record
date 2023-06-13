@@ -19,7 +19,8 @@ RUN pip install \
       flask \
       flask-socketio \
       tflite-runtime \
-      rtsp
+      rtsp \
+      camerons-python
 COPY server /server
 
 #ENTRYPOINT gst-launch-1.0 v4l2src device=/dev/video ! tee name=t ! queue ! v4l2sink device=/dev/video1 t. ! queue ! v4l2sink device=/dev/video2; bash

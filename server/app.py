@@ -5,6 +5,12 @@ from flask_socketio import SocketIO
 import subprocess
 import rtsp
 import threading
+import base64
+from io import BytesIO
+from PIL import ImageChops
+from detector import Detector
+from operator import itemgetter
+from cameron.control import Lowpass
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -26,6 +32,7 @@ class VHS_Record:
         noise_enable=False,
         noise_level=0,
     )
+    labels = ["black", "blue", "noise"]
 
     def __init__(self, app, socket):
         self.recording = False
@@ -35,6 +42,8 @@ class VHS_Record:
         self.connected = False
         self.rtsp_client = None
         self.thread = threading.Thread(target=self.rtp_handler, daemon=True)
+        self.detector = Detector()
+
         if os.path.isfile(self.settings_loc):
             with open(self.settings_loc) as f:
                 self.settings = json.load(f)
@@ -43,6 +52,11 @@ class VHS_Record:
             settings_dir = os.path.split(self.settings_loc)[0]
             if not os.path.exists(settings_dir):
                 os.makedirs(settings_dir)
+
+        self.levels = len(self.labels) * [0]
+        self.filters = [
+            Lowpass(self.settings["filter_level"], dt=1) for i in self.levels
+        ]
 
         app.add_url_rule("/start", "start", self.start, methods=["POST"])
         app.add_url_rule("/stop", "stop", self.stop, methods=["POST"])
@@ -81,7 +95,8 @@ class VHS_Record:
             return dict(error="Invalid Filename"), 409
         if not self.filename.endswith(self.ffmpeg_settings["extension"]):
             self.filename += "." + self.ffmpeg_settings["extension"]
-        print("starting")
+        for filter in self.filters:
+            filter.reset()
         self.process = subprocess.Popen(
             [
                 "ffmpeg",
@@ -144,14 +159,45 @@ class VHS_Record:
 
     def root(self):
         return render_template(
-            "index.html", settings=self.settings, filename=self.filename
+            "index.html",
+            settings=self.settings,
+            filename=self.filename,
+            labels=self.labels,
         )
 
     def rtp_handler(self):
+        last_image = None
         while self.recording:
-            data = self.rtsp_client.read()
-            if data is not None:
-                print("got image")
+            image = self.rtsp_client.read()
+            if image is not None:
+                if (
+                    last_image is None
+                    or ImageChops.difference(image, last_image).getbbox()
+                ):
+                    raw_levels = itemgetter("black", "blue", "noise")(
+                        self.detector.detect(image)
+                    )
+                    for i in range(len(self.levels)):
+                        self.filters[i].timeconstant = self.settings["filter_level"]
+                        self.levels[i] = self.filters[i].filter(raw_levels[i])
+                        if (
+                            self.settings[self.labels[i] + "_enable"]
+                            and self.levels[i]
+                            > self.settings[self.labels[i] + "_level"]
+                        ):
+                            self.recording = False
+                    img_buffer = BytesIO()
+                    image.save(img_buffer, format="png")
+                    img_str = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
+                    socket.emit(
+                        "state",
+                        dict(
+                            img=img_str,
+                            recording=self.recording,
+                            levels=self.levels,
+                        ),
+                    )
+                    last_image = image
 
 
 recorder = VHS_Record(app, socket)

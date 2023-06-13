@@ -13,6 +13,10 @@
       .my-cell {
         padding: 8pt;
       }
+      .monitor-image {
+        width: 100%;
+        aspect-ratio: 640 / 480;
+      }
     </style>
   </head>
 <body>
@@ -25,6 +29,7 @@
     <main class="mdl-layout__content mdl-color--grey-100">
       <div class="mdl-grid">
         <div class="mdl-cell mdl-cell--9-col mdl-cell--stretch mdl-shadow--2dp my-cell">
+          <img id="monitor" class="monitor-image">
         </div>
         <div class="mdl-cell mdl-cell--3-col mdl-cell--stretch mdl-shadow--2dp my-cell">
           <h3>Settings</h3>
@@ -43,7 +48,7 @@
           <h5>Automatic Stop</h5>
           <h6>Filter</h6>
           <input class="mdl-slider mdl-js-slider" type="range" min="0" max="150" value="{{ 10 * settings.filter_level}}" tabindex="0" id="filter_level">
-          {% for label in ["black", "blue", "noise"] %}
+          {% for label in labels %}
             <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="{{ label }}_enable">
               <input type="checkbox" id="{{ label }}_enable" class="mdl-switch__input" {% if settings[label + "_enable"] %}checked{% endif %}>
               <span class="mdl-switch__label">{{ label | capitalize }} {% if label != "noise" %}Screen{% endif %}</span>
