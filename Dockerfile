@@ -22,10 +22,8 @@ RUN pip install \
       flask \
       flask-socketio \
       tflite-runtime \
-      rtsp \
+      pillow \
       camerons-python
 COPY server /server
-
-#ENTRYPOINT []
 
 CMD python3.8 server/app.py

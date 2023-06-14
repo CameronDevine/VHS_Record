@@ -3,14 +3,13 @@ import os
 import json
 from flask_socketio import SocketIO
 import subprocess
-import rtsp
 import threading
 import base64
 from io import BytesIO
-from PIL import ImageChops
 from detector import Detector
 from operator import itemgetter
 from cameron.control import Lowpass
+from PIL import Image
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -26,8 +25,7 @@ class VHS_Record:
         AUDIO_THREAD_QUEUE_SIZE="2048",
         AUDIO_DEVICE="1",
         EXTENSION="mp4",
-        SAVE_RTP=False,
-        FFMPEG_LOG_LEVEL="warning",
+        FFMPEG_LOG_LEVEL="info",
     )
     default_settings = dict(
         filter_level=0,
@@ -45,7 +43,6 @@ class VHS_Record:
         self.process = None
         self.filename = ""
         self.clients = 0
-        self.rtsp_client = None
         self.thread = None
         self.detector = Detector()
 
@@ -87,7 +84,6 @@ class VHS_Record:
         self.settings[setting] = value
         with open(self.settings_loc, "w") as f:
             json.dump(self.settings, f)
-        print(self.settings)
 
     def connect(self, *args, **kwargs):
         self.clients += 1
@@ -107,13 +103,12 @@ class VHS_Record:
             return dict(error="File already exists"), 409
         for filter in self.filters:
             filter.reset()
-        # Change this to use ffmpeg's image2pipe and pipe all the images out in bitmap
-        # format rather than using RTP. This works because all messages use stderr.
         self.process = subprocess.Popen(
             [
                 "ffmpeg",
                 "-loglevel",
                 self.env_settings["FFMPEG_LOG_LEVEL"],
+                "-nostats",
                 "-re",
                 "-thread_queue_size",
                 self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
@@ -141,18 +136,21 @@ class VHS_Record:
                 "-map",
                 "[out2]",
                 "-vcodec",
-                "mpeg2video",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                "640x480",
                 "-f",
-                "rtp",
-                "rtp://127.0.0.1:8888",
+                "image2pipe",
+                "-",
             ],
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
             stdin=subprocess.DEVNULL,
-            # stderr=subprocess.DEVNULL,
+            text=False,
         )
         self.recording = True
-        self.rtsp_client = rtsp.Client(rtsp_server_uri="rtp://127.0.0.1:8888")
-        self.thread = threading.Thread(target=self.rtp_handler, daemon=True)
+        self.thread = threading.Thread(target=self.img_handler, daemon=True)
         self.thread.start()
         return {}
 
@@ -165,7 +163,6 @@ class VHS_Record:
         except:
             pass
         self.process.terminate()
-        self.rtsp_client.close()
         return {}
 
     def set_enable(self, label=None, enable=None):
@@ -185,7 +182,6 @@ class VHS_Record:
     def set_filename(self, filename=None):
         assert filename is not None
         self.filename = filename
-        print(self.filename)
         return {}
 
     def root(self):
@@ -196,56 +192,35 @@ class VHS_Record:
             labels=self.labels,
         )
 
-    def rtp_handler(self):
-        last_image = None
-        index = 0
+    def img_handler(self):
+        img_size = 921600
         while self.recording:
-            image = self.rtsp_client.read()
-            if image is not None:
+            image = Image.frombytes("RGB", (640, 480), self.process.stdout.read(img_size))
+            raw_levels = itemgetter("black", "blue", "noise")(
+                self.detector.detect(image)
+            )
+            for i in range(len(self.levels)):
+                self.filters[i].timeconstant = self.settings["filter_level"]
+                self.levels[i] = self.filters[i].filter(raw_levels[i])
                 if (
-                    last_image is None
-                    or ImageChops.difference(image, last_image).getbbox()
+                    self.settings[self.labels[i] + "_enable"]
+                    and self.levels[i] > self.settings[self.labels[i] + "_level"]
                 ):
-                    raw_levels = itemgetter("black", "blue", "noise")(
-                        self.detector.detect(image)
-                    )
-                    for i in range(len(self.levels)):
-                        self.filters[i].timeconstant = self.settings["filter_level"]
-                        self.levels[i] = self.filters[i].filter(raw_levels[i])
-                        if (
-                            self.settings[self.labels[i] + "_enable"]
-                            and self.levels[i]
-                            > self.settings[self.labels[i] + "_level"]
-                        ):
-                            self.recording = False
-                            self.process.terminate()
-                            self.rtsp_client.close()
-                    if self.clients >= 1:
-                        img_buffer = BytesIO()
-                        image.save(img_buffer, format="png")
-                        img_str = base64.b64encode(img_buffer.getvalue()).decode(
-                            "utf-8"
-                        )
-                        socket.emit(
-                            "state",
-                            dict(
-                                img=img_str,
-                                recording=self.recording,
-                                levels=self.levels,
-                            ),
-                        )
-                    if self.env_settings["SAVE_RTP"]:
-                        filename_base = self.filename.split(".")[0]
-                        filename = os.path.join(
-                            "/data",
-                            filename_base,
-                            "{}-{:05d}.png".format(filename_base, index),
-                        )
-                        if index == 0:
-                            os.makedirs(os.path.split(filename)[0])
-                        image.save(filename)
-                        index += 1
-                    last_image = image
+                    self.recording = False
+                    self.process.terminate()
+                    break
+            if self.clients >= 1:
+                img_buffer = BytesIO()
+                image.save(img_buffer, format="png")
+                img_str = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
+                socket.emit(
+                    "state",
+                    dict(
+                        img=img_str,
+                        recording=self.recording,
+                        levels=self.levels,
+                    ),
+                )
 
 
 recorder = VHS_Record(app, socket)
