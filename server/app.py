@@ -195,7 +195,9 @@ class VHS_Record:
     def img_handler(self):
         img_size = 921600
         while self.recording:
-            image = Image.frombytes("RGB", (640, 480), self.process.stdout.read(img_size))
+            image = Image.frombytes(
+                "RGB", (640, 480), self.process.stdout.read(img_size)
+            )
             raw_levels = itemgetter("black", "blue", "noise")(
                 self.detector.detect(image)
             )
