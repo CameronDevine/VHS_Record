@@ -1,4 +1,4 @@
-.PHONY: build run terminal
+.PHONY: build run terminal push
 
 tag = latest
 user = camerondevine
@@ -16,3 +16,6 @@ run:
 
 terminal:
 	sudo docker run --device=/dev/$(video):/dev/video --device=/dev/snd -v "$$(pwd)/data":/data -v "$$(pwd)/config:/config" -p 5000:5000 -it $(container) bash
+
+push:
+	sudo docker push $(container)
