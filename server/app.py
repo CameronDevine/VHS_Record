@@ -21,8 +21,12 @@ class VHS_Record:
     settings_loc = "/config/settings.json"
     env_settings = dict(
         VCODEC="h264",
+        ACODEC="aac",
+        VIDEO_THREAD_QUEUE_SIZE="64",
+        AUDIO_THREAD_QUEUE_SIZE="2048",
+        AUDIO_DEVICE="1",
         EXTENSION="mp4",
-        SAVE_RTP=True,
+        SAVE_RTP=False,
     )
     default_settings = dict(
         filter_level=0,
@@ -102,16 +106,28 @@ class VHS_Record:
             [
                 "ffmpeg",
                 "-re",
+                "-thread_queue_size",
+                self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
                 "-f",
                 "v4l2",
                 "-i",
                 "/dev/video",
+                "-thread_queue_size",
+                self.env_settings["AUDIO_THREAD_QUEUE_SIZE"],
+                "-f",
+                "alsa",
+                "-i",
+                "hw:" + self.env_settings["AUDIO_DEVICE"],
                 "-filter_complex",
                 "[0:v]split=2[in1][in2];[in2]fps=1[out2]",
                 "-map",
                 "[in1]",
+                "-map",
+                "1:a",
                 "-vcodec",
                 self.env_settings["VCODEC"],
+                "-acodec",
+                self.env_settings["ACODEC"],
                 path,
                 "-map",
                 "[out2]",
@@ -135,7 +151,10 @@ class VHS_Record:
         if not self.recording:
             return dict(error="Not currently recording"), 409
         self.recording = False
-        self.thread.join(timeout=2)
+        try:
+            self.thread.join(timeout=2)
+        except:
+            pass
         self.process.terminate()
         self.rtsp_client.close()
         return {}
