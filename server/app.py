@@ -19,7 +19,7 @@ socket = SocketIO(app)
 
 class VHS_Record:
     settings_loc = "/config/settings.json"
-    env_settings = dict(
+    default_env_settings = dict(
         VCODEC="h264",
         ACODEC="aac",
         VIDEO_THREAD_QUEUE_SIZE="64",
@@ -27,6 +27,7 @@ class VHS_Record:
         AUDIO_DEVICE="1",
         EXTENSION="mp4",
         SAVE_RTP=False,
+        FFMPEG_LOG_LEVEL="warning",
     )
     default_settings = dict(
         filter_level=0,
@@ -56,6 +57,10 @@ class VHS_Record:
             settings_dir = os.path.split(self.settings_loc)[0]
             if not os.path.exists(settings_dir):
                 os.makedirs(settings_dir)
+
+        self.env_settings = dict()
+        for var, default in self.default_env_settings.items():
+            self.env_settings[var] = os.environ.get(var, default)
 
         self.levels = len(self.labels) * [0]
         self.filters = [
@@ -102,9 +107,13 @@ class VHS_Record:
             return dict(error="File already exists"), 409
         for filter in self.filters:
             filter.reset()
+        # Change this to use ffmpeg's image2pipe and pipe all the images out in bitmap
+        # format rather than using RTP. This works because all messages use stderr.
         self.process = subprocess.Popen(
             [
                 "ffmpeg",
+                "-loglevel",
+                self.env_settings["FFMPEG_LOG_LEVEL"],
                 "-re",
                 "-thread_queue_size",
                 self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
@@ -139,7 +148,7 @@ class VHS_Record:
             ],
             stdout=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
         )
         self.recording = True
         self.rtsp_client = rtsp.Client(rtsp_server_uri="rtp://127.0.0.1:8888")
@@ -243,4 +252,4 @@ recorder = VHS_Record(app, socket)
 
 
 if __name__ == "__main__":
-    socket.run(app, host="0.0.0.0")
+    socket.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)
