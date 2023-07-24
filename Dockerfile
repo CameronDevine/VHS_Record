@@ -15,6 +15,7 @@ RUN apt-get update && \
       alsa-utils \
       libsndfile1-dev \
     	libgl1-mesa-glx \
+      v4l-utils \
     && apt-get clean
 ADD https://bootstrap.pypa.io/get-pip.py .
 RUN python3.8 get-pip.py && rm get-pip.py

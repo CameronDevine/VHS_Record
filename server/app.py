@@ -10,6 +10,7 @@ from detector import Detector
 from operator import itemgetter
 from cameron.control import Lowpass
 from PIL import Image
+from time import sleep
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -19,13 +20,21 @@ socket = SocketIO(app)
 class VHS_Record:
     settings_loc = "/config/settings.json"
     default_env_settings = dict(
+        INPUT_FMT="v4l2",
+        INPUT_PATH="/dev/video0",
         VCODEC="h264",
         ACODEC="aac",
+        OUTPUT_RES="640x480",
         VIDEO_THREAD_QUEUE_SIZE="64",
+        VIDEO_FILTER="",
+        ALSA_AUDIO="false",
         AUDIO_THREAD_QUEUE_SIZE="2048",
         AUDIO_DEVICE="1",
         EXTENSION="mp4",
         FFMPEG_LOG_LEVEL="info",
+        SETUP_COMMAND="",
+        SETUP_SUCCESS="0",
+        SETUP_DELAY="0",
     )
     default_settings = dict(
         filter_level=0,
@@ -43,7 +52,8 @@ class VHS_Record:
         self.process = None
         self.filename = ""
         self.clients = 0
-        self.thread = None
+        self.img_thread = None
+        self.process_thread = None
         self.detector = Detector()
 
         if os.path.isfile(self.settings_loc):
@@ -103,55 +113,80 @@ class VHS_Record:
             return dict(error="File already exists"), 409
         for filter in self.filters:
             filter.reset()
+        if len(self.env_settings["SETUP_COMMAND"]) > 0:
+            setup_command = self.env_settings["SETUP_COMMAND"].split(" ")
+            print(setup_command)
+            process = subprocess.run(setup_command)
+            if process.returncode != int(self.env_settings["SETUP_SUCCESS"]):
+                return dict(error="Setup command failed"), 409
+            sleep(float(self.env_settings["SETUP_DELAY"]))
+        command = [
+            "ffmpeg",
+            "-loglevel",
+            self.env_settings["FFMPEG_LOG_LEVEL"],
+            "-nostats",
+            "-re",
+            "-thread_queue_size",
+            self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
+            "-f",
+            self.env_settings["INPUT_FMT"],
+            "-i",
+            self.env_settings["INPUT_PATH"],
+            *(
+                []
+                if self.env_settings["ALSA_AUDIO"] == "false"
+                else (
+                    "-thread_queue_size",
+                    self.env_settings["AUDIO_THREAD_QUEUE_SIZE"],
+                    "-f",
+                    "alsa",
+                    "-i",
+                    "hw:" + self.env_settings["AUDIO_DEVICE"],
+                )
+            ),
+            "-filter_complex",
+            "[0:v]"
+            + (
+                self.env_settings["VIDEO_FILTER"] + ","
+                if len(self.env_settings["VIDEO_FILTER"])
+                else ""
+            )
+            + "split=2[in1][in2];[in2]fps=1[out2]",
+            "-map",
+            "[in1]",
+            "-map",
+            "0:a" if self.env_settings["ALSA_AUDIO"] == "false" else "1:a",
+            "-vcodec",
+            self.env_settings["VCODEC"],
+            "-acodec",
+            self.env_settings["ACODEC"],
+            "-s",
+            self.env_settings["OUTPUT_RES"],
+            path,
+            "-map",
+            "[out2]",
+            "-vcodec",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-s",
+            "640x480",
+            "-f",
+            "image2pipe",
+            "-",
+        ]
+        print(" ".join(command))
         self.process = subprocess.Popen(
-            [
-                "ffmpeg",
-                "-loglevel",
-                self.env_settings["FFMPEG_LOG_LEVEL"],
-                "-nostats",
-                "-re",
-                "-thread_queue_size",
-                self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
-                "-f",
-                "v4l2",
-                "-i",
-                "/dev/video",
-                "-thread_queue_size",
-                self.env_settings["AUDIO_THREAD_QUEUE_SIZE"],
-                "-f",
-                "alsa",
-                "-i",
-                "hw:" + self.env_settings["AUDIO_DEVICE"],
-                "-filter_complex",
-                "[0:v]split=2[in1][in2];[in2]fps=1[out2]",
-                "-map",
-                "[in1]",
-                "-map",
-                "1:a",
-                "-vcodec",
-                self.env_settings["VCODEC"],
-                "-acodec",
-                self.env_settings["ACODEC"],
-                path,
-                "-map",
-                "[out2]",
-                "-vcodec",
-                "rawvideo",
-                "-pix_fmt",
-                "rgb24",
-                "-s",
-                "640x480",
-                "-f",
-                "image2pipe",
-                "-",
-            ],
+            command,
             stdout=subprocess.PIPE,
             stdin=subprocess.DEVNULL,
             text=False,
         )
         self.recording = True
-        self.thread = threading.Thread(target=self.img_handler, daemon=True)
-        self.thread.start()
+        self.img_thread = threading.Thread(target=self.img_handler, daemon=True)
+        self.process_thread = threading.Thread(target=self.process_handler, daemon=True)
+        self.img_thread.start()
+        self.process_thread.start()
         return {}
 
     def stop(self):
@@ -159,7 +194,8 @@ class VHS_Record:
             return dict(error="Not currently recording"), 409
         self.recording = False
         try:
-            self.thread.join(timeout=2)
+            self.img_thread.join(timeout=2)
+            self.process_thread.join(timeout=2)
         except:
             pass
         self.process.terminate()
@@ -195,9 +231,10 @@ class VHS_Record:
     def img_handler(self):
         img_size = 921600
         while self.recording:
-            image = Image.frombytes(
-                "RGB", (640, 480), self.process.stdout.read(img_size)
-            )
+            data = self.process.stdout.read(img_size)
+            if len(data) != img_size:
+                continue
+            image = Image.frombytes("RGB", (640, 480), data)
             raw_levels = itemgetter("black", "blue", "noise")(
                 self.detector.detect(image)
             )
@@ -223,6 +260,16 @@ class VHS_Record:
                         levels=self.levels,
                     ),
                 )
+
+    def process_handler(self):
+        while self.recording:
+            self.recording = self.process.poll() == None
+        socket.emit(
+            "recording",
+            dict(
+                recording=False,
+            ),
+        )
 
 
 recorder = VHS_Record(app, socket)

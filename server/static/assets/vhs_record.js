@@ -12,6 +12,10 @@ socket.on("state", (data) => {
     set_level(document.getElementById("noise_level"), data.levels[2]);
   }
 });
+socket.on("recording", (data) => {
+  set_recording(data.recording);
+  snackbar("Recording stopped");
+});
 
 window.addEventListener("load", (event) => {
   document.getElementById("filename").addEventListener("focusout", filename);
@@ -55,14 +59,18 @@ function post(url) {
         data = {error: "Error"};
       }
       if ("error" in data) {
-        document.getElementById("notification").MaterialSnackbar.showSnackbar({
-          message: data.error,
-        });
+        snackbar(data.error);
       }
       return false;
     }
   }
   return true;
+}
+
+function snackbar(message) {
+  document.getElementById("notification").MaterialSnackbar.showSnackbar({
+    message: message,
+  });
 }
 
 function start() {
