@@ -179,7 +179,7 @@ class VHS_Record:
         self.process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE,
             text=False,
         )
         self.recording = True
@@ -246,7 +246,6 @@ class VHS_Record:
                     and self.levels[i] > self.settings[self.labels[i] + "_level"]
                 ):
                     self.recording = False
-                    self.process.terminate()
                     break
             if self.clients >= 1:
                 img_buffer = BytesIO()
@@ -263,7 +262,9 @@ class VHS_Record:
 
     def process_handler(self):
         while self.recording:
-            self.recording = self.process.poll() == None
+            if self.process.poll() is not None:
+                self.recording = False
+        self.process.stdin.write(b"q")
         socket.emit(
             "recording",
             dict(
