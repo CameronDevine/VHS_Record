@@ -257,7 +257,7 @@ class VHS_Record:
                     dict(
                         img=img_str,
                         recording=self.recording,
-                        levels=self.levels,
+                        levels=self.levels[:2],
                     ),
                 )
 
