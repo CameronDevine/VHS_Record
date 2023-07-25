@@ -1,10 +1,14 @@
+[![GitHub](https://img.shields.io/github/license/camerondevine/VHS_Record)](https://github.com/CameronDevine/VHS_Record/blob/master/LICENSE)
+[![Docker Image Size (tag)](https://img.shields.io/docker/image-size/camerondevine/vhs_record/latest)](https://hub.docker.com/repository/docker/camerondevine/vhs_record/general)
+[![GitHub issues](https://img.shields.io/github/issues/camerondevine/VHS_Record)](https://github.com/CameronDevine/VHS_Record/issues)
+
 # VHS Record
 
 This repository contains the source to create a Docker container for digitizing VHS tapes. This container uses Video4Linux and FFmpeg to do the recording and also includes an AI system for detecting when to stop recording. This software needs to be paired with hardware such as a USB or PCI based capture card and a VHS player.
 
 ## VHS End Detector
 
-The VHS end detection system uses an AI based system. It can currently detect blue or black screens common at the end of the media being recorded. Both of these can be enabled or disabled and the confidence level to stop the recording can be set. As blue and black screens can also appear in the middle of a film, a low pass filter can be used to avoid the video stopping when these screens appear for a short period of time in the middle of a recording. The code used to train this AI system can be found here.
+The VHS end detection system uses an AI based system. It can currently detect blue or black screens common at the end of the media being recorded. Both of these can be enabled or disabled and the confidence level to stop the recording can be set. As blue and black screens can also appear in the middle of a film, a low pass filter can be used to avoid the video stopping when these screens appear for a short period of time in the middle of a recording.
 
 ## Docker Settings
 
