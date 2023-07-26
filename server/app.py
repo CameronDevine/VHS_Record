@@ -11,6 +11,7 @@ from operator import itemgetter
 from cameron.control import Lowpass
 from PIL import Image
 from time import sleep
+import signal
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -54,7 +55,9 @@ class VHS_Record:
         self.clients = 0
         self.img_thread = None
         self.process_thread = None
+        self.stderr_thread = None
         self.detector = Detector()
+        self.time = 0
 
         if os.path.isfile(self.settings_loc):
             with open(self.settings_loc) as f:
@@ -115,9 +118,12 @@ class VHS_Record:
             filter.reset()
         if len(self.env_settings["SETUP_COMMAND"]) > 0:
             setup_command = self.env_settings["SETUP_COMMAND"].split(" ")
-            print(setup_command)
-            process = subprocess.run(setup_command)
+            self.log("Running command: " + self.env_settings["SETUP_COMMAND"])
+            process = subprocess.run(setup_command, capture_output=True)
+            self.log(process.stdout.decode("utf-8"), newline=False)
+            self.log(process.stderr.decode("utf-8"), newline=False)
             if process.returncode != int(self.env_settings["SETUP_SUCCESS"]):
+                self.log("Setup command returned {}".format(process.returncode))
                 return dict(error="Setup command failed"), 409
             sleep(float(self.env_settings["SETUP_DELAY"]))
         command = [
@@ -175,30 +181,44 @@ class VHS_Record:
             "image2pipe",
             "-",
         ]
-        print(" ".join(command))
+        self.log("Running command: " + " ".join(command))
         self.process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             text=False,
         )
         self.recording = True
+        self.time = 0
         self.img_thread = threading.Thread(target=self.img_handler, daemon=True)
         self.process_thread = threading.Thread(target=self.process_handler, daemon=True)
+        self.stderr_thread = threading.Thread(target=self.stderr_handler, daemon=True)
         self.img_thread.start()
         self.process_thread.start()
+        self.stderr_thread.start()
         return {}
+
+    def shutdown_aux_threads(self):
+        try:
+            self.process_thread.join(timeout=25)
+        except:
+            self.log("Process handler thread didn't terminate")
+        try:
+            self.stderr_thread.join(timeout=2)
+        except:
+            self.log("Stderr handler thread didn't terminate")
 
     def stop(self):
         if not self.recording:
             return dict(error="Not currently recording"), 409
         self.recording = False
+        self.log("Stopping due to button press")
         try:
             self.img_thread.join(timeout=2)
-            self.process_thread.join(timeout=2)
         except:
-            pass
-        self.process.terminate()
+            self.log("Image handler thread didn't terminate")
+        self.shutdown_aux_threads()
         return {}
 
     def set_enable(self, label=None, enable=None):
@@ -225,13 +245,14 @@ class VHS_Record:
             "index.html",
             settings=self.settings,
             filename=self.filename,
-            labels=self.labels,
+            labels=self.labels[:2],
         )
 
     def img_handler(self):
         img_size = 921600
         while self.recording:
             data = self.process.stdout.read(img_size)
+            self.time += 1
             if len(data) != img_size:
                 continue
             image = Image.frombytes("RGB", (640, 480), data)
@@ -246,31 +267,63 @@ class VHS_Record:
                     and self.levels[i] > self.settings[self.labels[i] + "_level"]
                 ):
                     self.recording = False
+                    self.log("Stopping due to {} level".format(self.labels[i]))
+                    self.shutdown_aux_threads()
                     break
             if self.clients >= 1:
                 img_buffer = BytesIO()
                 image.save(img_buffer, format="png")
                 img_str = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
+                sec = self.time % 60
+                min = (self.time - sec) // 60
                 socket.emit(
                     "state",
                     dict(
                         img=img_str,
                         recording=self.recording,
                         levels=self.levels[:2],
+                        time="{:02d}:{:02d}".format(min, sec),
                     ),
                 )
 
     def process_handler(self):
         while self.recording:
+            sleep(0.1)
             if self.process.poll() is not None:
                 self.recording = False
-        self.process.stdin.write(b"q")
+        self.log("Starting FFmpeg shutdown sequence")
+        if self.process.returncode is None:
+            i = 0
+            while self.process.poll() is None:
+                if i >= 200:
+                    self.log("Sending SIGKILL to FFmpeg")
+                    self.process.send_signal(signal.SIGKILL)
+                elif i % 10 == 0:
+                    self.log("Sending SIGINT to FFmpeg")
+                    self.process.send_signal(signal.SIGINT)
+                i += 1
+                sleep(0.1)
+        self.log("FFmpeg returned {}".format(self.process.returncode))
         socket.emit(
             "recording",
             dict(
                 recording=False,
             ),
         )
+
+    def stderr_handler(self):
+        buffer = b""
+        while self.process.poll() is None:
+            buffer += self.process.stderr.read(1)
+            # breakpoint()
+            if buffer.endswith(b"\n"):
+                self.log(buffer.decode("utf-8"), newline=False)
+                buffer = b""
+
+    def log(self, message, newline=True):
+        if newline:
+            message += "\n"
+        socket.emit("log", dict(message=message))
 
 
 recorder = VHS_Record(app, socket)

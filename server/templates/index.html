@@ -17,6 +17,15 @@
         width: 100%;
         aspect-ratio: 640 / 480;
       }
+      .log {
+        font-family: Courier;
+        height: 50vh;
+        overflow-y: auto;
+      }
+      .time {
+        font-size: 50px;
+        vertical-align: middle;
+      }
     </style>
   </head>
 <body>
@@ -45,6 +54,7 @@
           <button class="mdl-button mdl-js-button mdl-button--fab mdl-js-ripple-effect mdl-button--colored" id="stop_button" disabled>
             <i class="material-icons">stop</i>
           </button>
+          <span id="time" class="time">00:00</span>
           <h5>Automatic Stop</h5>
           <h6>Filter</h6>
           <input class="mdl-slider mdl-js-slider" type="range" min="0" max="150" value="{{ 10 * settings.filter_level}}" tabindex="0" id="filter_level">
@@ -55,6 +65,9 @@
             </label>
             <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="{{ 100 * settings[label + '_level'] }}" tabindex="0" id="{{ label }}_level" {% if not settings[label + "_enable"] %}disabled{% endif %}>
           {% endfor %}
+        </div>
+        <div class="mdl-cell mdl-cell--12-col mdl-cell--stretch mdl-shadow--2dp my-cell">
+          <p id="log" class="log"></p>
         </div>
       </div>
     </main>

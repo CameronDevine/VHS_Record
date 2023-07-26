@@ -8,13 +8,17 @@ socket.on("state", (data) => {
   if (document.getElementById("blue_enable").checked) {
     set_level(document.getElementById("blue_level"), data.levels[1]);
   }
-  if (document.getElementById("noise_enable").checked) {
-    set_level(document.getElementById("noise_level"), data.levels[2]);
-  }
+  // if (document.getElementById("noise_enable").checked) {
+  //   set_level(document.getElementById("noise_level"), data.levels[2]);
+  // }
+  document.getElementById("time").innerText = data.time;
 });
 socket.on("recording", (data) => {
   set_recording(data.recording);
   snackbar("Recording stopped");
+});
+socket.on("log", (data) => {
+  document.getElementById("log").innerText += data.message;
 });
 
 window.addEventListener("load", (event) => {
@@ -23,15 +27,15 @@ window.addEventListener("load", (event) => {
   document.getElementById("stop_button").addEventListener("click", stop);
   document.getElementById("black_enable").addEventListener("click", enable_switch);
   document.getElementById("blue_enable").addEventListener("click", enable_switch);
-  document.getElementById("noise_enable").addEventListener("click", enable_switch);
+  //document.getElementById("noise_enable").addEventListener("click", enable_switch);
   document.getElementById("filter_level").addEventListener("change", level_slider);
   document.getElementById("black_level").addEventListener("change", level_slider);
   document.getElementById("blue_level").addEventListener("change", level_slider);
-  document.getElementById("noise_level").addEventListener("change", level_slider);
+  //document.getElementById("noise_level").addEventListener("change", level_slider);
 
   document.getElementById("black_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
   document.getElementById("blue_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
-  document.getElementById("noise_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
+  //document.getElementById("noise_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
 
   element = document.getElementById("black_level");
   if ("MaterialSlider" in element) {
@@ -41,10 +45,10 @@ window.addEventListener("load", (event) => {
   if ("MaterialSlider" in element) {
     format_slider(element)
   }
-  element = document.getElementById("noise_level");
-  if ("MaterialSlider" in element) {
-    format_slider(event);
-  }
+  // element = document.getElementById("noise_level");
+  // if ("MaterialSlider" in element) {
+  //   format_slider(event);
+  // }
 });
 
 function post(url) {
