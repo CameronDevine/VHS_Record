@@ -14,6 +14,10 @@ The VHS end detection system uses an AI based system. It can currently detect bl
 
 Below are the necessary and optional settings needed to setup the container.
 
+### Port
+
+The port 5000 must be exposed by Docker so the web UI can be accessed.
+
 ### Devices
 
 To allow the Docker container to access the capture card, one or more devices must be mapped into the container.
@@ -53,3 +57,4 @@ There are multiple environment variables that can be used to customize the funct
 | SETUP_COMMAND           |               | An arbitrary command to run immediately before recording is started |
 | SETUP_SUCCESS           | 0             | If `SETUP_COMMAND` is set, the return value to checked for          |
 | SETUP_DELAY             | 0             | Number of seconds to wait before recording after the setup command  |
+| MIN_LENGTH              | 30            | Minimum number of seconds to record before automatically stopping   |
