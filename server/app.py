@@ -202,26 +202,11 @@ class VHS_Record:
         self.stderr_thread.start()
         return {}
 
-    def shutdown_aux_threads(self):
-        try:
-            self.process_thread.join(timeout=25)
-        except:
-            self.log("Process handler thread didn't terminate")
-        try:
-            self.stderr_thread.join(timeout=2)
-        except:
-            self.log("Stderr handler thread didn't terminate")
-
     def stop(self):
         if not self.recording:
             return dict(error="Not currently recording"), 409
         self.recording = False
         self.log("Stopping due to button press")
-        try:
-            self.img_thread.join(timeout=2)
-        except:
-            self.log("Image handler thread didn't terminate")
-        self.shutdown_aux_threads()
         return {}
 
     def set_enable(self, label=None, enable=None):
@@ -308,6 +293,14 @@ class VHS_Record:
                 i += 1
                 sleep(0.1)
         self.log("FFmpeg returned {}".format(self.process.returncode))
+        try:
+            self.img_thread.join(timeout=2)
+        except:
+            self.log("Image handler thread didn't terminate")
+        try:
+            self.stderr_thread.join(timeout=2)
+        except:
+            self.log("Stderr handler thread didn't terminate")
         socket.emit(
             "recording",
             dict(
