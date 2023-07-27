@@ -312,7 +312,6 @@ class VHS_Record:
         buffer = b""
         while self.process.poll() is None:
             buffer += self.process.stderr.read(1)
-            # breakpoint()
             if buffer.endswith(b"\n"):
                 self.log(buffer.decode("utf-8"), newline=False)
                 buffer = b""
