@@ -58,6 +58,7 @@ class VHS_Record:
         self.stderr_thread = None
         self.detector = Detector()
         self.time = 0
+        self.log_buffer = []
 
         if os.path.isfile(self.settings_loc):
             with open(self.settings_loc) as f:
@@ -116,6 +117,7 @@ class VHS_Record:
             return dict(error="File already exists"), 409
         for filter in self.filters:
             filter.reset()
+        self.log_buffer = []
         if len(self.env_settings["SETUP_COMMAND"]) > 0:
             setup_command = self.env_settings["SETUP_COMMAND"].split(" ")
             self.log("Running command: " + self.env_settings["SETUP_COMMAND"])
@@ -246,6 +248,7 @@ class VHS_Record:
             settings=self.settings,
             filename=self.filename,
             labels=self.labels[:2],
+            log=self.log_buffer,
         )
 
     def img_handler(self):
@@ -323,11 +326,11 @@ class VHS_Record:
     def log(self, message, newline=True):
         if newline:
             message += "\n"
+        self.log_buffer.append(message)
         socket.emit("log", dict(message=message))
 
 
 recorder = VHS_Record(app, socket)
-
 
 if __name__ == "__main__":
     socket.run(app, host="0.0.0.0", allow_unsafe_werkzeug=True)

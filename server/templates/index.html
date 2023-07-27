@@ -67,7 +67,12 @@
           {% endfor %}
         </div>
         <div class="mdl-cell mdl-cell--12-col mdl-cell--stretch mdl-shadow--2dp my-cell">
-          <p id="log" class="log"></p>
+          <p id="log" class="log">
+            {% for message in log %}
+              {{ message }}
+              <br>
+            {% endfor %}
+          </p>
         </div>
       </div>
     </main>
