@@ -36,6 +36,7 @@ class VHS_Record:
         SETUP_COMMAND="",
         SETUP_SUCCESS="0",
         SETUP_DELAY="0",
+        MIN_LENGTH="30",
     )
     default_settings = dict(
         filter_level=0,
@@ -262,17 +263,17 @@ class VHS_Record:
             raw_levels = itemgetter("black", "blue", "noise")(
                 self.detector.detect(image)
             )
-            for i in range(len(self.levels)):
-                self.filters[i].timeconstant = self.settings["filter_level"]
-                self.levels[i] = self.filters[i].filter(raw_levels[i])
-                if (
-                    self.settings[self.labels[i] + "_enable"]
-                    and self.levels[i] > self.settings[self.labels[i] + "_level"]
-                ):
-                    self.recording = False
-                    self.log("Stopping due to {} level".format(self.labels[i]))
-                    self.shutdown_aux_threads()
-                    break
+            if self.time > int(self.env_settings["MIN_LENGTH"]):
+                for i in range(len(self.levels)):
+                    self.filters[i].timeconstant = self.settings["filter_level"]
+                    self.levels[i] = self.filters[i].filter(raw_levels[i])
+                    if (
+                        self.settings[self.labels[i] + "_enable"]
+                        and self.levels[i] > self.settings[self.labels[i] + "_level"]
+                    ):
+                        self.recording = False
+                        self.log("Stopping due to {} level".format(self.labels[i]))
+                        break
             if self.clients >= 1:
                 img_buffer = BytesIO()
                 image.save(img_buffer, format="png")
