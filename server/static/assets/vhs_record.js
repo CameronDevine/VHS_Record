@@ -78,6 +78,7 @@ function snackbar(message) {
 }
 
 function start() {
+  document.getElementById("log").innerText = "";
   set_recording(post("/start"));
 }
 
