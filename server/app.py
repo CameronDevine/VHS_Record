@@ -284,10 +284,10 @@ class VHS_Record:
         if self.process.returncode is None:
             i = 0
             while self.process.poll() is None:
-                if i >= 200:
+                if i >= 1200 and i % 10 == 0:
                     self.log("Sending SIGKILL to FFmpeg")
                     self.process.send_signal(signal.SIGKILL)
-                elif i % 10 == 0:
+                elif i % 100 == 0 and i < 300:
                     self.log("Sending SIGINT to FFmpeg")
                     self.process.send_signal(signal.SIGINT)
                 i += 1
