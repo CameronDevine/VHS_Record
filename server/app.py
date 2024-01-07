@@ -22,6 +22,9 @@ class VHS_Record:
     settings_loc = "/config/settings.json"
     default_env_settings = dict(
         INPUT_FMT="v4l2",
+        V4L2_FMT="",
+        V4L2_RES="",
+        V4L2_FPS="",
         INPUT_PATH="/dev/video0",
         VCODEC="h264",
         ACODEC="aac",
@@ -31,6 +34,7 @@ class VHS_Record:
         ALSA_AUDIO="false",
         AUDIO_THREAD_QUEUE_SIZE="2048",
         AUDIO_DEVICE="1",
+        AUDIO_CHANNELS="",
         EXTENSION="mp4",
         FFMPEG_LOG_LEVEL="info",
         SETUP_COMMAND="",
@@ -137,8 +141,23 @@ class VHS_Record:
             "-re",
             "-thread_queue_size",
             self.env_settings["VIDEO_THREAD_QUEUE_SIZE"],
+            *(
+                ("-r", self.env_settings["V4L2_FPS"])
+                if self.env_settings["V4L2_FPS"]
+                else []
+            ),
             "-f",
             self.env_settings["INPUT_FMT"],
+            *(
+                ("-input_format", self.env_settings["V4L2_FMT"])
+                if self.env_settings["V4L2_FMT"]
+                else []
+            ),
+            *(
+                ("-video_size", self.env_settings["V4L2_RES"])
+                if self.env_settings["V4L2_RES"]
+                else []
+            ),
             "-i",
             self.env_settings["INPUT_PATH"],
             *(
@@ -149,6 +168,9 @@ class VHS_Record:
                     self.env_settings["AUDIO_THREAD_QUEUE_SIZE"],
                     "-f",
                     "alsa",
+                    *(
+                        ("-channels", self.env_settings["AUDIO_CHANNELS"] if self.env_settings["AUDIO_CHANNELS"] else [])
+                    ),
                     "-i",
                     "hw:" + self.env_settings["AUDIO_DEVICE"],
                 )

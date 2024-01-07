@@ -44,6 +44,9 @@ There are multiple environment variables that can be used to customize the funct
 | ----------------------- | ------------- | ------------------------------------------------------------------- |
 | INPUT_FMT               | v4l2          | The input format for the capture card used in FFmpeg                |
 | INPUT_PATH              | /dev/video0   | The path to the capture card to use with FFmpeg                     |
+| V4L2_FMT                |               | The video format to request from V4L2                               |
+| V4L2_FPS                |               | The frames per second to request from V4L2                          |
+| V4L2_RES                |               | The resolution to request from V4L2                                 |
 | VCODEC                  | h264          | The video codec to use in the output file                           |
 | ACODEC                  | aac           | The audio codec to use in the output file                           |
 | OUTPUT_RES              | 640x480       | The resolution to use in the output file                            |
@@ -52,6 +55,7 @@ There are multiple environment variables that can be used to customize the funct
 | ALSA_AUDIO              | false         | Set to "true" to enable ALSA audio recording                        |
 | AUDIO_DEVICE            | 1             | The audio device to use when recording audio via ALSA               |
 | AUDIO_THREAD_QUEUE_SIZE | 2048          | The size of the FFmpeg audio thread queue when recording via ALSA   |
+| AUDIO_CHANNELS          |               | The number of audio channels to record when using ALSA              |
 | EXTENSION               | mp4           | The file extension to apply to when none is given                   |
 | FFMPEG_LOG_LEVEL        | info          | The FFmpeg log level that will show up in the container logs        |
 | SETUP_COMMAND           |               | An arbitrary command to run immediately before recording is started |
