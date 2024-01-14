@@ -4,7 +4,9 @@
 
 # VHS Record
 
-This repository contains the source to create a Docker container for digitizing VHS tapes. This container uses Video4Linux and FFmpeg to do the recording and also includes an AI system for detecting when to stop recording. This software needs to be paired with hardware such as a USB or PCI based capture card and a VHS player.
+This repository contains the source to create a Docker container for digitizing VHS tapes. This container uses Video4Linux and FFmpeg to do the recording, includes a web UI, and also has an AI based system for detecting when to stop recording. This software needs to be paired with hardware such as a USB or PCI based capture card and a VHS player.
+
+![VHS Record screenshot](screenshot.png)
 
 ## VHS End Detector
 
