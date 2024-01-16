@@ -25,12 +25,16 @@ class VHS_Record:
         V4L2_FMT="",
         V4L2_RES="",
         V4L2_FPS="",
+        V4L2_TIMESTAMPS="default",
         INPUT_PATH="/dev/video0",
         VCODEC="h264",
         ACODEC="aac",
         OUTPUT_RES="640x480",
+        CRF="",
+        PIX_FMT="",
         VIDEO_THREAD_QUEUE_SIZE="64",
         VIDEO_FILTER="",
+        AUDIO_FILTER="",
         ALSA_AUDIO="false",
         AUDIO_THREAD_QUEUE_SIZE="2048",
         AUDIO_DEVICE="1",
@@ -158,6 +162,8 @@ class VHS_Record:
                 if self.env_settings["V4L2_RES"]
                 else []
             ),
+            "-ts",
+            self.env_settings["V4L2_TIMESTAMPS"],
             "-i",
             self.env_settings["INPUT_PATH"],
             *(
@@ -169,7 +175,9 @@ class VHS_Record:
                     "-f",
                     "alsa",
                     *(
-                        ("-channels", self.env_settings["AUDIO_CHANNELS"] if self.env_settings["AUDIO_CHANNELS"] else [])
+                        ("-channels", self.env_settings["AUDIO_CHANNELS"])
+                        if self.env_settings["AUDIO_CHANNELS"]
+                        else []
                     ),
                     "-i",
                     "hw:" + self.env_settings["AUDIO_DEVICE"],
@@ -182,13 +190,30 @@ class VHS_Record:
                 if len(self.env_settings["VIDEO_FILTER"])
                 else ""
             )
-            + "split=2[in1][in2];[in2]fps=1[out2]",
+            + "split=2[in1][in2];[in2]fps=1[out2];"
+            + ("[0:a]" if self.env_settings["ALSA_AUDIO"] == "false" else "[1:a]")
+            + (
+                self.env_settings["AUDIO_FILTER"]
+                if self.env_settings["AUDIO_FILTER"]
+                else "anull"
+            )
+            + "[audio]",
             "-map",
             "[in1]",
             "-map",
-            "0:a" if self.env_settings["ALSA_AUDIO"] == "false" else "1:a",
+            "[audio]",
             "-vcodec",
             self.env_settings["VCODEC"],
+            *(
+                ("-crf", self.env_settings["CRF"])
+                if len(self.env_settings["CRF"])
+                else []
+            ),
+            *(
+                ("-pix_fmt", self.env_settings["PIX_FMT"])
+                if len(self.env_settings["PIX_FMT"])
+                else []
+            ),
             "-acodec",
             self.env_settings["ACODEC"],
             "-s",

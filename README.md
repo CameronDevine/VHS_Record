@@ -49,11 +49,15 @@ There are multiple environment variables that can be used to customize the funct
 | V4L2_FMT                |               | The video format to request from V4L2                               |
 | V4L2_FPS                |               | The frames per second to request from V4L2                          |
 | V4L2_RES                |               | The resolution to request from V4L2                                 |
+| V4L2_TIMESTAMPS         | default       | The type of timestamps to use for grabbed frames                    |
 | VCODEC                  | h264          | The video codec to use in the output file                           |
 | ACODEC                  | aac           | The audio codec to use in the output file                           |
 | OUTPUT_RES              | 640x480       | The resolution to use in the output file                            |
+| PIX_FMT                 |               | The pixel format to use for the recorded file                       |
+| CRF                     |               | The Constant Rate Factor (CRF) to use for the recorded file         |
 | VIDEO_THREAD_QUEUE_SIZE | 64            | The size of the video thread queue in FFmpeg                        |
 | VIDEO_FILTER            |               | FFmpeg filters to apply to the video stream                         |
+| AUDIO_FILTER            |               | FFmpeg filters to apply to the audio stream                         |
 | ALSA_AUDIO              | false         | Set to "true" to enable ALSA audio recording                        |
 | AUDIO_DEVICE            | 1             | The audio device to use when recording audio via ALSA               |
 | AUDIO_THREAD_QUEUE_SIZE | 2048          | The size of the FFmpeg audio thread queue when recording via ALSA   |
