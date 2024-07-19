@@ -65,6 +65,22 @@
             </label>
             <input class="mdl-slider mdl-js-slider" type="range" min="0" max="100" value="{{ 100 * settings[label + '_level'] }}" tabindex="0" id="{{ label }}_level" {% if not settings[label + "_enable"] %}disabled{% endif %}>
           {% endfor %}
+          <h6>Stop After</h6>
+          <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="stop_after_enable" style="display: inline-block; width: 45px;">
+            <input type="checkbox" id="stop_after_enable" class="mdl-switch__input" {% if settings["stop_after_enable"] %}checked{% endif %}>
+            <span class="mdl-switch__label"></span>
+          </label>
+          <div class="mdl-textfield mdl-js-textfield" style="width: 5em; padding-top: 0;">
+            <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="hours" value="{{ '' if  math.floor(settings['stop_after'] / 3600) == 0 else math.floor(settings['stop_after'] / 3600) }}">
+            <label class="mdl-textfield__label" for="hours" style="top: 4">Hours...</label>
+            <span class="mdl-textfield__error">Input is not a number!</span>
+          </div>
+          <span>:</span>
+          <div class="mdl-textfield mdl-js-textfield" style="width: 5em; padding-top: 0;">
+            <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="minutes" value="{{ '' if settings['stop_after'] == 0 else round(settings['stop_after'] / 60 - math.floor(settings['stop_after'] / 3600) * 60) }}">
+            <label class="mdl-textfield__label" for="minutes" style="top: 4">Minutes...</label>
+            <span class="mdl-textfield__error">Input is not a number!</span>
+          </div>
         </div>
         <div class="mdl-cell mdl-cell--12-col mdl-cell--stretch mdl-shadow--2dp my-cell">
           <p id="log" class="log">

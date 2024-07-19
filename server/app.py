@@ -12,6 +12,7 @@ from cameron.control import Lowpass
 from PIL import Image
 from time import sleep
 import signal
+import math
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -54,6 +55,8 @@ class VHS_Record:
         blue_level=0,
         noise_enable=False,
         noise_level=0,
+        stop_after_enable=False,
+        stop_after=0,
     )
     labels = ["black", "blue", "noise"]
 
@@ -72,6 +75,9 @@ class VHS_Record:
         if os.path.isfile(self.settings_loc):
             with open(self.settings_loc) as f:
                 self.settings = json.load(f)
+            for key in self.default_settings:
+                if key not in self.settings:
+                    self.settings[key] = self.default_settings[key]
         else:
             self.settings = self.default_settings
             settings_dir = os.path.split(self.settings_loc)[0]
@@ -94,6 +100,12 @@ class VHS_Record:
         )
         app.add_url_rule(
             "/<label>_level/<int:level>", "level", self.set_level, methods=["POST"]
+        )
+        app.add_url_rule(
+            "/stop_after/<int:seconds>",
+            "stop_after",
+            self.set_stop_after,
+            methods=["POST"],
         )
         app.add_url_rule(
             "/filename/<filename>", "filename", self.set_filename, methods=["POST"]
@@ -270,6 +282,11 @@ class VHS_Record:
         )
         return {}
 
+    def set_stop_after(self, seconds=None):
+        assert seconds is not None
+        self.update_settings("stop_after", seconds)
+        return {}
+
     def set_filename(self, filename=None):
         assert filename is not None
         self.filename = filename
@@ -282,29 +299,49 @@ class VHS_Record:
             filename=self.filename,
             labels=self.labels[:2],
             log=self.log_buffer,
+            math=math,
+            round=round,
+        )
+
+    def should_detect(self):
+        return self.time > int(self.env_settings["MIN_LENGTH"]) and any(
+            [self.settings[label + "_enable"] for label in self.labels]
         )
 
     def img_handler(self):
         img_size = 921600
+        image = None
         while self.recording:
             data = self.process.stdout.read(img_size)
             self.time += 1
             if len(data) != img_size:
                 continue
-            image = Image.frombytes("RGB", (640, 480), data)
-            raw_levels = itemgetter("black", "blue", "noise")(
-                self.detector.detect(image)
-            )
-            if self.time > int(self.env_settings["MIN_LENGTH"]):
-                for i in range(len(self.levels)):
-                    self.filters[i].timeconstant = self.settings["filter_level"]
-                    self.levels[i] = self.filters[i].filter(raw_levels[i])
+            if (
+                self.settings["stop_after_enable"]
+                and self.time > self.settings["stop_after"]
+            ):
+                self.recording = False
+                self.log("Stopping as maximum recording time reached")
+                break
+            if self.clients >= 1 or self.should_detect():
+                image = Image.frombytes("RGB", (640, 480), data)
+            if self.should_detect():
+                raw_levels = itemgetter("black", "blue", "noise")(
+                    self.detector.detect(image)
+                )
+                for filter in self.filters:
+                    filter.timeconstant = self.settings["filter_level"]
+                self.levels = [
+                    filter.filter(raw_level)
+                    for filter, raw_level in zip(self.filters, raw_levels)
+                ]
+                for label, level in zip(self.labels, self.levels):
                     if (
-                        self.settings[self.labels[i] + "_enable"]
-                        and self.levels[i] > self.settings[self.labels[i] + "_level"]
+                        self.settings[label + "_enable"]
+                        and level > self.settings[label + "_enable"]
                     ):
                         self.recording = False
-                        self.log("Stopping due to {} level".format(self.labels[i]))
+                        self.log("Stopping due to {} level".format(label))
                         break
             if self.clients >= 1:
                 img_buffer = BytesIO()

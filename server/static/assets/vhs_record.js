@@ -28,10 +28,16 @@ window.addEventListener("load", (event) => {
   document.getElementById("black_enable").addEventListener("click", enable_switch);
   document.getElementById("blue_enable").addEventListener("click", enable_switch);
   //document.getElementById("noise_enable").addEventListener("click", enable_switch);
+  document.getElementById("stop_after_enable").addEventListener("click", enable_switch);
   document.getElementById("filter_level").addEventListener("change", level_slider);
   document.getElementById("black_level").addEventListener("change", level_slider);
   document.getElementById("blue_level").addEventListener("change", level_slider);
   //document.getElementById("noise_level").addEventListener("change", level_slider);
+  document.getElementById("hours").addEventListener("change", stop_after);
+  document.getElementById("hours").addEventListener("focus", disable_stop_after);
+  document.getElementById("minutes").addEventListener("change", stop_after);
+  document.getElementById("minutes").addEventListener("focus", disable_stop_after);
+
 
   document.getElementById("black_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
   document.getElementById("blue_level").addEventListener("mdl-componentupgraded", (event) => format_slider(event.srcElement));
@@ -86,6 +92,26 @@ function stop() {
   set_recording(!post("/stop"));
 }
 
+function stop_after() {
+  seconds = 0;
+  hours = parseFloat(document.getElementById("hours").value);
+  if (!isNaN(hours)) {
+    seconds += 3600 * hours;
+  }
+  minutes = parseFloat(document.getElementById("minutes").value);
+  if (!isNaN(minutes)) {
+    seconds += 60 * minutes;
+  }
+  post("/stop_after/" + Math.ceil(seconds));
+}
+
+function disable_stop_after() {
+  el = document.getElementById("stop_after_enable");
+  if (el.checked) {
+    el.click();
+  }
+}
+
 function set_recording(recording) {
   if (recording) {
     document.getElementById("record_button").setAttribute("disabled", "");
@@ -105,10 +131,12 @@ function enable_switch(event) {
 
 function disable_slider(switch_id) {
   slider = document.getElementById(switch_id.split("_")[0] + "_level");
-  if (document.getElementById(switch_id).checked) {
-    slider.removeAttribute("disabled");
-  } else {
-    slider.setAttribute("disabled", "");
+  if (slider != null) {
+    if (document.getElementById(switch_id).checked) {
+      slider.removeAttribute("disabled");
+    } else {
+      slider.setAttribute("disabled", "");
+    }
   }
 }
 

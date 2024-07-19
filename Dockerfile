@@ -1,5 +1,5 @@
 #FROM linuxserver/ffmpeg
-FROM ubuntu
+FROM ubuntu:jammy
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
