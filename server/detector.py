@@ -16,7 +16,7 @@ class Detector:
         self.input_shape = self.input_details[0]["shape"]
 
     def detect(self, img):
-        resized = img.resize(self.input_shape[1:3])
+        resized = img.resize(tuple(self.input_shape[1:3]))
         img_data = np.asarray(resized, dtype=np.float32).reshape(self.input_shape)
         self.interpreter.set_tensor(self.input_details[0]["index"], img_data)
         self.interpreter.invoke()
