@@ -338,7 +338,7 @@ class VHS_Record:
                 for label, level in zip(self.labels, self.levels):
                     if (
                         self.settings[label + "_enable"]
-                        and level > self.settings[label + "_enable"]
+                        and level > self.settings[label + "_level"]
                     ):
                         self.recording = False
                         self.log("Stopping due to {} level".format(label))
